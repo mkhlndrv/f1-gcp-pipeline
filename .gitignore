@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/profiles.yml
+
+# Secrets (never commit)
+.env
+*.env
+*-key.json
+service-account*.json
+credentials.json
+
+# But keep loader schemas (they're checked in)
+!loaders/gcs_to_bq/schemas/*.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
