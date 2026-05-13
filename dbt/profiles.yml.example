@@ -1,0 +1,31 @@
+# Copy this file to ~/.dbt/profiles.yml (NOT committed — kept in your home dir).
+#
+#   mkdir -p ~/.dbt && cp dbt/profiles.yml.example ~/.dbt/profiles.yml
+#
+# Auth method `oauth` uses Application Default Credentials from
+# `gcloud auth application-default login`. No service-account JSON file involved.
+
+f1:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: image-lab-494712
+      dataset: f1_marts          # default; staging models land in f1_staging via the schema macro
+      location: US
+      threads: 4
+      timeout_seconds: 300
+      priority: interactive
+
+    prod:
+      # Used by the Cloud Run Job (Phase 6) when running as f1-dbt-sa.
+      # The job-attached SA's ADC kicks in automatically; no keyfile needed.
+      type: bigquery
+      method: oauth
+      project: image-lab-494712
+      dataset: f1_marts
+      location: US
+      threads: 8
+      timeout_seconds: 600
+      priority: interactive

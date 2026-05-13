@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: ergast
+    description: "Raw NDJSON pages from the Jolpica/Ergast API, one row per paginated response. Loaded by the GCS→BQ loader (Phase 3)."
+    database: image-lab-494712
+    schema: f1_raw
+    tables:
+      - name: ergast_results
+      - name: ergast_qualifying
+      - name: ergast_drivers
+      - name: ergast_seasons
+      - name: ergast_driverstandings

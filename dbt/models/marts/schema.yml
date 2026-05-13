@@ -1,0 +1,59 @@
+version: 2
+
+models:
+  - name: dim_driver
+    description: "One row per driver. Joined dim for the dashboard."
+    columns:
+      - name: driver_id
+        description: "Ergast natural key (e.g. 'max_verstappen', 'hamilton')."
+        tests:
+          - not_null
+          - unique
+      - name: full_name
+      - name: latest_constructor_id
+
+  - name: dim_race
+    description: "One row per race weekend (season, round)."
+    columns:
+      - name: race_id
+        description: "Surrogate key: '<season>-<round>'."
+        tests:
+          - not_null
+          - unique
+      - name: season
+        tests: [not_null]
+      - name: round
+        tests: [not_null]
+      - name: race_date
+
+  - name: fct_driver_race_summary
+    description: "One row per (race, driver). Powers the Tier 1 dashboard."
+    columns:
+      - name: race_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_race')
+                field: race_id
+      - name: driver_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_driver')
+                field: driver_id
+      - name: position
+      - name: grid
+      - name: points
+      - name: qualifying_position
+
+  - name: vw_dashboard_overview
+    description: "Flat dashboard-facing view. One row per (race, driver) with cumulative points and win/podium flags pre-computed. Powers the Looker Studio report."
+    columns:
+      - name: race_id
+        tests: [not_null]
+      - name: driver_id
+        tests: [not_null]
+      - name: cumulative_points
+        description: "Running sum of season points up to and including this round."
