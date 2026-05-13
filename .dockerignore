@@ -1,0 +1,28 @@
+# Build context lives at repo root for dbt_runner/Dockerfile.
+# Exclude everything noisy or unrelated so the upload to Cloud Build stays small.
+
+.git/
+.github/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# dbt local artefacts
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/.user.yml
+dbt/profiles.yml
+
+# Components not needed in the dbt runner image
+extractors/
+loaders/
+infra/
+deploy/
+
+# Project docs
+README.md
+PLAN.md
+CLAUDE.md

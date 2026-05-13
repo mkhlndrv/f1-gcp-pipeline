@@ -1,0 +1,16 @@
+# Baked into the dbt-runner container image. NOT for local dev (use dbt/profiles.yml.example).
+# method: oauth → google client libs read Application Default Credentials, which on
+# Cloud Run come from the attached service account (f1-dbt-sa).
+
+f1:
+  target: prod
+  outputs:
+    prod:
+      type: bigquery
+      method: oauth
+      project: image-lab-494712
+      dataset: f1_marts
+      location: US
+      threads: 8
+      timeout_seconds: 600
+      priority: interactive
