@@ -7,6 +7,8 @@ End-to-end Google Cloud Platform data-engineering project: ingests Formula 1 rac
 - **Page 1** — season standings, championship table, points-over-rounds line chart (powered by `vw_dashboard_overview`).
 - **Page 2** — race deep-dive: lap-time over the race, pace ranking, per-driver stats, parameterised by race selector (powered by `vw_dashboard_race`).
 
+![F1 Race deep-dive page](docs/dashboard_race.png)
+
 > Headline as of latest run (2026-05-13, 4 rounds): Antonelli leads the championship with 93 pts (3 wins).
 
 ![F1 2026 Season Overview dashboard](docs/dashboard.png)

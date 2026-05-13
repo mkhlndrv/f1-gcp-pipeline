@@ -44,15 +44,15 @@ select
 
     -- Hardcoded label maps; Tier 3 replacement target.
     case l.driver_number
-        when  1 then 'VER'  when  4 then 'NOR'  when 10 then 'GAS'
+        when  1 then 'VER'  when  4 then 'NOR'  when  5 then 'BOR'
+        when  6 then 'HAD'  when  7 then 'DOO'  when 10 then 'GAS'
         when 11 then 'PER'  when 12 then 'ANT'  when 14 then 'ALO'
         when 16 then 'LEC'  when 18 then 'STR'  when 20 then 'MAG'
         when 22 then 'TSU'  when 23 then 'ALB'  when 24 then 'ZHO'
         when 27 then 'HUL'  when 30 then 'LAW'  when 31 then 'OCO'
-        when 33 then 'BEA'  when 38 then 'BOR'  when 43 then 'COL'
-        when 44 then 'HAM'  when 50 then 'BOR'  when 55 then 'SAI'
+        when 43 then 'COL'  when 44 then 'HAM'  when 55 then 'SAI'
         when 63 then 'RUS'  when 77 then 'BOT'  when 81 then 'PIA'
-        when 87 then 'BEA'  when 5  then 'BOR'  when 7  then 'DOO'
+        when 87 then 'BEA'
         else concat('#', cast(l.driver_number as string))
     end                                                    as driver_label,
 
