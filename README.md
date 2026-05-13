@@ -6,9 +6,11 @@ End-to-end Google Cloud Platform data-engineering project: ingests Formula 1 rac
 **Live dashboard:** [F1 2026 — Season Overview](https://datastudio.google.com/reporting/5ac17e24-8f05-4390-b862-4f952353a76d) (Looker Studio, public-view)
 - **Page 1** — season standings, championship table, points-over-rounds line chart (powered by `vw_dashboard_overview`).
 - **Page 2** — race deep-dive: lap-time over the race, pace ranking, per-driver stats, parameterised by race selector (powered by `vw_dashboard_race`).
-- **Page 3 (optional)** — live race state: current driver, compound, tire age, last-5-lap average; auto-tracks the freshest session in the data (powered by `vw_dashboard_live`). Refreshes daily; near-live (~2 min lag) during real session windows.
+- **Page 3** — live race state: current driver, compound, tire age, last-5-lap average; auto-tracks the freshest session in the data (powered by `vw_dashboard_live`). Refreshes daily; near-live (~2 min lag) during real session windows.
 
 ![F1 Race deep-dive page](docs/dashboard_race.png)
+
+![F1 Live race state page](docs/dashboard_live.png)
 
 > Headline as of latest run (2026-05-13, 4 rounds): Antonelli leads the championship with 93 pts (3 wins).
 
