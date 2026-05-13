@@ -46,25 +46,33 @@ def _load_schema(src: str, ep_lc: str):
 
 
 def _quarantine(bucket_name: str, object_name: str, reason: str) -> None:
-    """Move a bad object to raw_quarantine/ and log an error."""
+    """Move a bad object to raw_quarantine/ and log a structured ERROR.
+
+    The "severity" key is a Cloud Logging convention — when emitted in a JSON
+    log line, Cloud Logging tags the entry with that severity. Without it,
+    Python's logging.error() routes through stdout but Cloud Logging shows the
+    entry with no severity, so log-based alerts won't fire.
+    """
     bucket = gcs.bucket(bucket_name)
     src_blob = bucket.blob(object_name)
     if not src_blob.exists():
-        log.error(json.dumps({"event": "quarantine_miss", "object": object_name, "reason": reason}))
+        log.error(json.dumps({
+            "severity": "ERROR",
+            "event": "quarantine_miss",
+            "object": object_name,
+            "reason": reason,
+        }))
         return
     dest = f"{QUARANTINE_PREFIX}{object_name}"
     bucket.copy_blob(src_blob, bucket, new_name=dest)
     src_blob.delete()
-    log.error(
-        json.dumps(
-            {
-                "event": "quarantined",
-                "from": f"gs://{bucket_name}/{object_name}",
-                "to": f"gs://{bucket_name}/{dest}",
-                "reason": reason,
-            }
-        )
-    )
+    log.error(json.dumps({
+        "severity": "ERROR",
+        "event": "quarantined",
+        "from": f"gs://{bucket_name}/{object_name}",
+        "to": f"gs://{bucket_name}/{dest}",
+        "reason": reason,
+    }))
 
 
 @functions_framework.cloud_event

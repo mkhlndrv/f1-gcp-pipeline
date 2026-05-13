@@ -22,7 +22,7 @@ End-to-end F1 race-weekend analytics pipeline on GCP.
 | Tier | Phases | Status | Notes |
 |---|---|---|---|
 | **Tier 1 — must-ship (rubric-complete)** | 0–8 | ✅ shipped | Ergast extractor, GCS→BQ loader, dbt warehouse + dashboard view, dbt-runner Cloud Run Job, daily schedules, Looker Studio dashboard, CI |
-| **Tier 2 — strong submission** | 9–10 (✅ shipped), 11–12 (pending) | 🟡 in progress | Phase 9 = OpenF1 poller; Phase 10 = `fct_lap` + `fct_driver_pace`. Pending: monitoring + dbt source freshness (11), race deep-dive page (12) |
+| **Tier 2 — strong submission** | 9–11 (✅ shipped), 12 (pending) | 🟡 in progress | Phase 9 = OpenF1 poller; Phase 10 = `fct_lap` + `fct_driver_pace`; Phase 11 = Cloud Monitoring alert. Pending: race deep-dive page (12). dbt source freshness deferred (needs `_loaded_at` column on raw tables — see README). |
 | **Tier 3 — polish** | 13–14 | ⏸ stretch | Full clean-air pace heuristic, live race page, off-season replay job |
 
 PLAN.md has the per-phase build plan; git history has the implementation order; this file is the conventions contract.
@@ -47,7 +47,7 @@ f1-pipeline/
 │   └── macros/
 │       └── generate_schema_name.sql  # so +schema: marts → literal `f1_marts`
 ├── dbt_runner/           # container image + Dockerfile + cloudbuild.yaml for the daily Cloud Run Job
-├── infra/alerts/         # Cloud Monitoring alert policies (Tier 2)
+├── infra/alerts/         # Cloud Monitoring alert policies (function_errors.yaml)
 ├── deploy/               # idempotent gcloud deploy scripts for each component
 ├── .github/
 │   ├── workflows/ci.yml  # ruff + `dbt parse` (static; no BQ connection)
@@ -130,6 +130,9 @@ Always NDJSON (newline-delimited JSON). One record per line. UTF-8.
 - **Loader returns 200 on quarantine.** A poisoned file lands in `raw_quarantine/`, the function logs `severity=ERROR`, and Eventarc does NOT retry. Monitoring (Phase 11) will alert on the ERROR log.
 - **Cloud Build context = repo root.** `dbt_runner/cloudbuild.yaml` builds with the project root as context so the Dockerfile can `COPY dbt/`. Don't `cd dbt_runner && gcloud builds submit .` — the build will fail.
 - **Loader uses `@functions_framework.cloud_event`.** Without the decorator, the framework calls with the legacy `(data, context)` signature and the function 500s. Same applies if a new event-driven function is added.
+- **Cloud Logging severity comes from a JSON `severity` key, not Python's `logging.error()`.** When emitting structured log lines via `log.error(json.dumps({...}))`, you MUST include `"severity": "ERROR"` in the dict — otherwise Cloud Logging shows the entry with no severity and log-based alerts won't fire. The loader's `_quarantine` helper does this; new ERROR paths must too.
+- **Alert policy `f1-cloud-run-errors`** uses a `service_name` regex matching `gcs-to-bq-loader|ergast-extractor|openf1-poller|dbt-runner`. If a new Cloud Run service is added, update `infra/alerts/function_errors.yaml` and re-run `bash deploy/deploy_alerts.sh`.
+- **`gcloud alpha monitoring`** isn't installed by default; the alert deploy script uses `gcloud beta monitoring` which is in the base install.
 
 ---
 

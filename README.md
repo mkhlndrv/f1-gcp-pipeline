@@ -80,11 +80,21 @@ The dashboard is then a one-time UI step in Looker Studio: **Create → Data sou
 | **Lake → warehouse** | `loaders/gcs_to_bq/main.py` (Eventarc finalize trigger); explicit JSON schemas in `loaders/gcs_to_bq/schemas/`; bad files quarantined to `raw_quarantine/`. |
 | **Warehouse transformation** | `dbt/models/staging/` (5 views) + `dbt/models/marts/` (3 marts + 1 dashboard view); 24 dbt tests including `unique`, `not_null`, and `relationships`. |
 | **Dashboard** | Live Looker Studio link above; backed by `f1_marts.vw_dashboard_overview`. |
-| **Reliability** | Idempotent writes; quarantine on bad files; dbt tests; Cloud Scheduler 3-attempt retries; CI workflow on PR. |
+| **Reliability** | Idempotent writes; quarantine on bad files; dbt tests; Cloud Scheduler 3-attempt retries; CI workflow on PR; **Cloud Monitoring alert** on any Cloud Run ERROR (see [Monitoring](#monitoring)). |
 | **Security** | Three least-privilege service accounts (`f1-extractor-sa`, `f1-loader-sa`, `f1-dbt-sa`); resource-scoped `roles/run.invoker`; no public endpoints; no committed credentials (`.gitignore`). |
 | **Flexibility / scalability** | All config via env vars (no hardcoded names in code); BigQuery on-demand pricing scales to season; loader is generic (works for any `raw/source=*/endpoint=*/` path — drops in OpenF1 unchanged). |
 | **Best practices** | Decoupling (E/L/T components only talk via GCS + BQ); modularisation (each component owns its `main.py`/`requirements.txt`/`README.md`); orchestration via Cloud Scheduler; CI on every PR. |
 | **Reusability / auto-refresh** (bonus) | Cloud Scheduler runs the whole pipeline daily without human intervention. Re-ingestible from any season via `?season=YYYY` query param. |
+
+## Monitoring
+
+A Cloud Monitoring alert policy (`infra/alerts/function_errors.yaml`) emails `andredrummondthegoat@gmail.com` whenever any Cloud Run service in the pipeline (`gcs-to-bq-loader`, `ergast-extractor`, `openf1-poller`, `dbt-runner`) logs `severity>=ERROR`. Notification rate-limited to one alert per 5 minutes so a transient burst doesn't spam.
+
+The loader's `_quarantine` helper is the most common error path — bad NDJSON gets moved to `gs://image-lab-f1-lake/raw_quarantine/` and the function logs a structured ERROR event with the BQ load error message. Verified end-to-end with an intentional malformed-file drop: alert fires within ~2 minutes.
+
+Re-applyable via `bash deploy/deploy_alerts.sh` (idempotent — updates the existing policy in place).
+
+**Future work:** dbt `source freshness` would also catch the upstream-API-stopped-returning-data case (Ergast outage where the loader runs cleanly but no new data arrives). Skipped for this pass because the loader doesn't inject a per-row `_loaded_at` column; adding it would require a small loader change + schema re-snapshot for all six raw tables.
 
 ## Cost
 

@@ -1,0 +1,41 @@
+# Cloud Monitoring alert policy: emails f1-pipeline-oncall whenever any
+# Cloud Run service in the F1 pipeline logs severity>=ERROR.
+#
+# Apply via: bash deploy/deploy_alerts.sh
+# (idempotent — re-applies/updates an existing policy with the same displayName)
+
+displayName: f1-cloud-run-errors
+combiner: OR
+enabled: true
+
+conditions:
+  - displayName: Cloud Run service ERROR log entries
+    conditionMatchedLog:
+      filter: |
+        resource.type="cloud_run_revision"
+        resource.labels.service_name=~"^(gcs-to-bq-loader|ergast-extractor|openf1-poller|dbt-runner)$"
+        severity>=ERROR
+
+alertStrategy:
+  notificationRateLimit:
+    period: 300s
+
+notificationChannels:
+  - projects/image-lab-494712/notificationChannels/13854224886077788126
+
+documentation:
+  content: |
+    A Cloud Run service in the F1 pipeline logged severity>=ERROR.
+
+    Common causes:
+      1. Loader: bad file in raw_quarantine/ (check the bucket).
+      2. Extractors: upstream API outage (Ergast, OpenF1).
+      3. dbt-runner: failed model — check dbt logs in the Cloud Run console.
+
+    Filter the offending logs:
+      gcloud logging read \
+        'resource.type="cloud_run_revision" AND severity>=ERROR' \
+        --limit=20 --project=image-lab-494712
+
+    Runbook: see README.md "Monitoring" section.
+  mimeType: text/markdown
