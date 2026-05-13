@@ -1,0 +1,292 @@
+[
+  {
+    "fields": [
+      {
+        "fields": [
+          {
+            "fields": [
+              {
+                "fields": [
+                  {
+                    "mode": "NULLABLE",
+                    "name": "lap",
+                    "type": "INTEGER"
+                  },
+                  {
+                    "fields": [
+                      {
+                        "mode": "NULLABLE",
+                        "name": "time",
+                        "type": "STRING"
+                      }
+                    ],
+                    "mode": "NULLABLE",
+                    "name": "Time",
+                    "type": "RECORD"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "rank",
+                    "type": "INTEGER"
+                  }
+                ],
+                "mode": "NULLABLE",
+                "name": "FastestLap",
+                "type": "RECORD"
+              },
+              {
+                "mode": "NULLABLE",
+                "name": "laps",
+                "type": "INTEGER"
+              },
+              {
+                "fields": [
+                  {
+                    "mode": "NULLABLE",
+                    "name": "nationality",
+                    "type": "STRING"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "name",
+                    "type": "STRING"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "url",
+                    "type": "STRING"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "constructorId",
+                    "type": "STRING"
+                  }
+                ],
+                "mode": "NULLABLE",
+                "name": "Constructor",
+                "type": "RECORD"
+              },
+              {
+                "mode": "NULLABLE",
+                "name": "positionText",
+                "type": "STRING"
+              },
+              {
+                "mode": "NULLABLE",
+                "name": "grid",
+                "type": "INTEGER"
+              },
+              {
+                "fields": [
+                  {
+                    "mode": "NULLABLE",
+                    "name": "nationality",
+                    "type": "STRING"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "dateOfBirth",
+                    "type": "DATE"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "familyName",
+                    "type": "STRING"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "permanentNumber",
+                    "type": "INTEGER"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "url",
+                    "type": "STRING"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "code",
+                    "type": "STRING"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "givenName",
+                    "type": "STRING"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "driverId",
+                    "type": "STRING"
+                  }
+                ],
+                "mode": "NULLABLE",
+                "name": "Driver",
+                "type": "RECORD"
+              },
+              {
+                "mode": "NULLABLE",
+                "name": "position",
+                "type": "INTEGER"
+              },
+              {
+                "mode": "NULLABLE",
+                "name": "status",
+                "type": "STRING"
+              },
+              {
+                "mode": "NULLABLE",
+                "name": "points",
+                "type": "INTEGER"
+              },
+              {
+                "fields": [
+                  {
+                    "mode": "NULLABLE",
+                    "name": "time",
+                    "type": "STRING"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "millis",
+                    "type": "INTEGER"
+                  }
+                ],
+                "mode": "NULLABLE",
+                "name": "Time",
+                "type": "RECORD"
+              },
+              {
+                "mode": "NULLABLE",
+                "name": "number",
+                "type": "INTEGER"
+              }
+            ],
+            "mode": "REPEATED",
+            "name": "Results",
+            "type": "RECORD"
+          },
+          {
+            "mode": "NULLABLE",
+            "name": "raceName",
+            "type": "STRING"
+          },
+          {
+            "fields": [
+              {
+                "fields": [
+                  {
+                    "mode": "NULLABLE",
+                    "name": "country",
+                    "type": "STRING"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "locality",
+                    "type": "STRING"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "long",
+                    "type": "FLOAT"
+                  },
+                  {
+                    "mode": "NULLABLE",
+                    "name": "lat",
+                    "type": "FLOAT"
+                  }
+                ],
+                "mode": "NULLABLE",
+                "name": "Location",
+                "type": "RECORD"
+              },
+              {
+                "mode": "NULLABLE",
+                "name": "circuitName",
+                "type": "STRING"
+              },
+              {
+                "mode": "NULLABLE",
+                "name": "url",
+                "type": "STRING"
+              },
+              {
+                "mode": "NULLABLE",
+                "name": "circuitId",
+                "type": "STRING"
+              }
+            ],
+            "mode": "NULLABLE",
+            "name": "Circuit",
+            "type": "RECORD"
+          },
+          {
+            "mode": "NULLABLE",
+            "name": "round",
+            "type": "INTEGER"
+          },
+          {
+            "mode": "NULLABLE",
+            "name": "url",
+            "type": "STRING"
+          },
+          {
+            "mode": "NULLABLE",
+            "name": "time",
+            "type": "STRING"
+          },
+          {
+            "mode": "NULLABLE",
+            "name": "date",
+            "type": "DATE"
+          },
+          {
+            "mode": "NULLABLE",
+            "name": "season",
+            "type": "INTEGER"
+          }
+        ],
+        "mode": "REPEATED",
+        "name": "Races",
+        "type": "RECORD"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "season",
+        "type": "INTEGER"
+      }
+    ],
+    "mode": "NULLABLE",
+    "name": "RaceTable",
+    "type": "RECORD"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "total",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "limit",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "url",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "series",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "offset",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "xmlns",
+    "type": "STRING"
+  }
+]

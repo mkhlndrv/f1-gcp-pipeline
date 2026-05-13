@@ -1,0 +1,56 @@
+[
+  {
+    "fields": [
+      {
+        "fields": [
+          {
+            "mode": "NULLABLE",
+            "name": "url",
+            "type": "STRING"
+          },
+          {
+            "mode": "NULLABLE",
+            "name": "season",
+            "type": "INTEGER"
+          }
+        ],
+        "mode": "REPEATED",
+        "name": "Seasons",
+        "type": "RECORD"
+      }
+    ],
+    "mode": "NULLABLE",
+    "name": "SeasonTable",
+    "type": "RECORD"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "total",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "limit",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "url",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "series",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "offset",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "xmlns",
+    "type": "STRING"
+  }
+]
