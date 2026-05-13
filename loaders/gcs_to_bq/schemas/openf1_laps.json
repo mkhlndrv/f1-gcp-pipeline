@@ -1,0 +1,67 @@
+[
+  {
+    "mode": "NULLABLE",
+    "name": "st_speed",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "is_pit_out_lap",
+    "type": "BOOLEAN"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "i1_speed",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "lap_duration",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "duration_sector_3",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "session_key",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "duration_sector_2",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "duration_sector_1",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "driver_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "i2_speed",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "date_start",
+    "type": "TIMESTAMP"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "lap_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "meeting_key",
+    "type": "INTEGER"
+  }
+]

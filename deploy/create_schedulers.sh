@@ -6,7 +6,7 @@
 # Jobs created here:
 #   ergast-daily          — calls ergast-extractor at 06:00 Europe/Madrid daily
 #   dbt-daily             — runs the dbt-runner Cloud Run Job at 06:30 Europe/Madrid daily
-#   (later: openf1-1min — appended in Phase 9)
+#   openf1-1min           — calls openf1-poller every minute UTC (self-gates outside session windows)
 
 set -euo pipefail
 
@@ -112,9 +112,29 @@ else
     "$DBT_SA"
 fi
 
+# --- OpenF1: every minute UTC (self-gates outside session windows) --------
+if ! gcloud functions describe openf1-poller --gen2 --region="$REGION" --project="$PROJECT_ID" >/dev/null 2>&1; then
+  echo "WARN: openf1-poller Cloud Run Function not deployed yet. Run deploy/deploy_extractor_openf1.sh first."
+  echo "      Skipping openf1-1min scheduler entry."
+else
+  OPENF1_URL=$(gcloud functions describe openf1-poller \
+    --gen2 --region="$REGION" --project="$PROJECT_ID" \
+    --format='value(serviceConfig.uri)')
+
+  upsert_http_job_oidc \
+    "openf1-1min" \
+    "*/1 * * * *" \
+    "UTC" \
+    "$OPENF1_URL" \
+    "GET" \
+    "$EXT_SA" \
+    "$OPENF1_URL"
+fi
+
 echo
 echo "==> Done. Inspect with:"
 echo "    gcloud scheduler jobs list --location=$REGION"
 echo "==> Manually fire jobs:"
 echo "    gcloud scheduler jobs run ergast-daily --location=$REGION"
 echo "    gcloud scheduler jobs run dbt-daily    --location=$REGION"
+echo "    gcloud scheduler jobs run openf1-1min  --location=$REGION"
