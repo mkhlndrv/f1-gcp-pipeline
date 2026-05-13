@@ -1,73 +1,137 @@
 # F1 GCP Analytics Pipeline
 
-End-to-end GCP pipeline that ingests Formula 1 race-weekend data from two free public APIs, models it into an analytics-ready warehouse, and serves a Looker Studio dashboard.
+End-to-end Google Cloud Platform data-engineering project: ingests Formula 1 race-weekend data from a free public API, lands it in a GCS data lake, loads it into BigQuery, models it with dbt, and serves an analytics dashboard in Looker Studio. Built as the final project for *Integrated Data Engineering and Analysis on Google Cloud Platform*.
 
 **Commit ID:** _filled at submission_
-**Dashboard:** _filled at Phase 7_
+**Live dashboard:** [F1 2026 — Season Overview](https://datastudio.google.com/reporting/5ac17e24-8f05-4390-b862-4f952353a76d) (Looker Studio, public-view)
 
-## Overview
+> Headline as of latest run (2026-05-13, 4 rounds): Antonelli leads the championship with 93 pts (3 wins).
 
-The pipeline runs on GCP entirely on managed services:
+![F1 2026 Season Overview dashboard](docs/dashboard.png)
 
-- **Daily batch** pulls canonical race results from the Jolpica/Ergast API.
-- **1-minute micro-batch poller** pulls live laps from OpenF1 during sessions (self-gates when no session is active, so it costs almost nothing off-weekend).
-- Both feed into a GCS lake, then BigQuery `f1_raw`, then dbt models into `f1_staging` and `f1_marts`.
-- A Looker Studio dashboard reads only from `f1_marts`.
-
-Course rubric mapping: lake ingestion ✓, lake→warehouse ✓, transformations ✓, dashboard ✓, security (least-privilege SAs) ✓, reliability (idempotent writes, dbt tests, CI) ✓, reusability (auto-refresh via Scheduler) ✓.
+---
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    SCH1[Scheduler<br/>daily 06:00] --> EXT1[CRF: Ergast extractor]
-    SCH2[Scheduler<br/>every 1 min] --> EXT2[CRF: OpenF1 poller<br/>self-gated]
-    EXT1 --> GCS[(GCS lake)]
-    EXT2 --> GCS
-    GCS -- finalize --> LOAD[CRF: loader]
-    LOAD --> RAW[(BQ f1_raw)]
-    SCH3[Scheduler<br/>daily 06:30] --> DBT[Cloud Run Job: dbt]
-    RAW --> DBT --> STG[(f1_staging)] --> MARTS[(f1_marts)] --> LS[Looker Studio]
+    SCH1[Cloud Scheduler<br/>daily 06:00 Madrid] --> EXT1[Cloud Run Function<br/>Ergast extractor]
+    EXT1 --> GCS[(GCS lake<br/>raw/source/endpoint/dt)]
+    GCS -- finalize event --> LOAD[Cloud Run Function<br/>GCS → BQ loader]
+    LOAD --> RAW[(BigQuery<br/>f1_raw)]
+    SCH3[Cloud Scheduler<br/>daily 06:30 Madrid] --> DBT[Cloud Run Job<br/>dbt build]
+    RAW --> DBT --> STG[(f1_staging<br/>views)]
+    STG --> MARTS[(f1_marts<br/>tables)]
+    MARTS --> LS[Looker Studio]
 ```
+
+Three independent components communicate only via GCS and BigQuery — fully decoupled. Each runs as a separate Cloud Run unit with its own least-privilege service account.
+
+## Pipeline type & rationale
+
+**Daily batch.** Ergast is the canonical historical-results source for Formula 1; it updates once per race weekend, so polling more often is wasted calls. Cloud Scheduler invokes the extractor at 06:00 Europe/Madrid daily; an Eventarc finalize trigger then fans the new file into BigQuery.
+
+The architecture is also designed to absorb a 1-minute micro-batch poller for live telemetry (OpenF1) — see the **Tier 2 (planned)** section below — but that source is not yet deployed. The shipped Tier 1 surface satisfies the rubric on its own.
+
+## What's deployed (Tier 1 — shipped)
+
+| # | Component | Code | GCP resource |
+|---|---|---|---|
+| 1 | Ergast extractor | `extractors/ergast/main.py` | Cloud Run Function `ergast-extractor` |
+| 2 | GCS → BQ loader | `loaders/gcs_to_bq/main.py` | Cloud Run Function `gcs-to-bq-loader` (Eventarc finalize trigger) |
+| 3 | dbt models | `dbt/models/{staging,marts}/` | BigQuery datasets `f1_staging`, `f1_marts` |
+| 4 | dbt runner | `dbt_runner/Dockerfile` | Cloud Run Job `dbt-runner` |
+| 5 | Daily schedules | `deploy/create_schedulers.sh` | `ergast-daily` 06:00, `dbt-daily` 06:30 (Madrid) |
+| 6 | Dashboard | Looker Studio | One page, four chart blocks |
+| 7 | CI | `.github/workflows/ci.yml` | GitHub Actions: ruff + `dbt parse` |
 
 ## Reproduce
 
-> Requires gcloud, bq, gsutil, Python 3.11, and a GCP project with billing on.
+> Prereqs: `gcloud`, `bq`, `gsutil`, Python 3.12, a GCP project with billing enabled, and Owner/Project-IAM-Admin role.
 
-1. One-time GCP setup: `bash deploy/setup_gcp.sh`
-2. Authenticate locally: `gcloud auth application-default login`
-3. Deploy extractors and loader: `bash deploy/deploy_extractor_ergast.sh && bash deploy/deploy_loader.sh` _(Phase 2/3)_
-4. Deploy dbt runner: `bash deploy/deploy_dbt_runner.sh` _(Phase 6)_
-5. Create schedulers: `bash deploy/create_schedulers.sh` _(Phase 4)_
+```bash
+# 1. one-time GCP setup (APIs, bucket, datasets, 3 SAs, IAM)
+bash deploy/setup_gcp.sh
+gcloud auth application-default login
 
-Dashboard link is set in Looker Studio (Phase 7).
+# 2. extractor + loader + scheduler for the batch path
+bash deploy/deploy_extractor_ergast.sh
+bash deploy/deploy_loader.sh
 
-## Layout
+# 3. dbt: containerise + push + Cloud Run Job
+bash deploy/deploy_dbt_runner.sh
 
-| Path | Purpose |
-| --- | --- |
-| `extractors/ergast/` | Daily batch HTTP-triggered Cloud Run Function (Ergast → GCS). |
-| `extractors/openf1/` | 1-minute self-gated poller (OpenF1 → GCS). |
-| `loaders/gcs_to_bq/` | Eventarc-triggered loader (GCS → BigQuery `f1_raw`). |
-| `dbt/` | Staging views + marts tables. Powers the dashboard. |
-| `dbt_runner/` | Container image + entrypoint for the daily dbt Cloud Run Job. |
-| `infra/alerts/` | Cloud Monitoring alert policies (YAML). |
-| `deploy/` | gcloud-based deploy scripts; idempotent. |
-| `.github/workflows/` | CI (ruff + dbt parse on PR). |
+# 4. wire the schedulers (Ergast 06:00, dbt 06:30, both Madrid time)
+bash deploy/create_schedulers.sh
+
+# 5. seed BQ once + watch it land
+gcloud scheduler jobs run ergast-daily --location=us-central1
+sleep 60
+bq query --use_legacy_sql=false 'SELECT COUNT(*) FROM `image-lab-494712.f1_marts.fct_driver_race_summary`'
+```
+
+The dashboard is then a one-time UI step in Looker Studio: **Create → Data source → BigQuery → `f1_marts.vw_dashboard_overview`**, then drop charts. Sharing must be set to "Anyone with the link → Viewer" on **both** the report and its data source.
+
+## Rubric mapping
+
+| Criterion | Where it's proven |
+|---|---|
+| **Lake ingestion (batch)** | `extractors/ergast/main.py` writes NDJSON to `gs://image-lab-f1-lake/raw/source=ergast/endpoint=*/dt=*/`; idempotent (UTC-timestamped filenames). |
+| **Lake → warehouse** | `loaders/gcs_to_bq/main.py` (Eventarc finalize trigger); explicit JSON schemas in `loaders/gcs_to_bq/schemas/`; bad files quarantined to `raw_quarantine/`. |
+| **Warehouse transformation** | `dbt/models/staging/` (5 views) + `dbt/models/marts/` (3 marts + 1 dashboard view); 24 dbt tests including `unique`, `not_null`, and `relationships`. |
+| **Dashboard** | Live Looker Studio link above; backed by `f1_marts.vw_dashboard_overview`. |
+| **Reliability** | Idempotent writes; quarantine on bad files; dbt tests; Cloud Scheduler 3-attempt retries; CI workflow on PR. |
+| **Security** | Three least-privilege service accounts (`f1-extractor-sa`, `f1-loader-sa`, `f1-dbt-sa`); resource-scoped `roles/run.invoker`; no public endpoints; no committed credentials (`.gitignore`). |
+| **Flexibility / scalability** | All config via env vars (no hardcoded names in code); BigQuery on-demand pricing scales to season; loader is generic (works for any `raw/source=*/endpoint=*/` path — drops in OpenF1 unchanged). |
+| **Best practices** | Decoupling (E/L/T components only talk via GCS + BQ); modularisation (each component owns its `main.py`/`requirements.txt`/`README.md`); orchestration via Cloud Scheduler; CI on every PR. |
+| **Reusability / auto-refresh** (bonus) | Cloud Scheduler runs the whole pipeline daily without human intervention. Re-ingestible from any season via `?season=YYYY` query param. |
+
+## Cost
+
+Under $0.50/month at current scheduling. BigQuery on-demand is well under the free 1 TB/month query quota; Cloud Run + Cloud Scheduler + GCS are negligible at this volume.
+
+## Tier table (project status)
+
+| Tier | Phases | Status |
+|---|---|---|
+| **Tier 1 — must-ship (rubric-complete)** | 0–8: GCP setup, scaffolding, Ergast extractor, loader, scheduler, dbt staging + 3 marts + 1 dashboard view, dbt-runner Cloud Run Job, dashboard page, CI + README | **Shipped** ✓ |
+| **Tier 2 — strong submission** | 9–12: OpenF1 1-min micro-batch poller, `fct_lap` + simple pace metric, Cloud Monitoring alert + dbt source freshness, race deep-dive dashboard page | Planned |
+| **Tier 3 — polish** | 13–14: Full clean-air pace metric (gap-ahead heuristic + linear fuel correction), live race dashboard page, off-season replay job | Stretch |
+
+Tier 2 and Tier 3 work is documented in `PLAN.md` and `CLAUDE.md`; the pipeline architecture is designed to absorb both with no rework — the loader and dbt project already handle the OpenF1 namespace.
 
 ## Limitations
 
-- OpenF1 is community-run; mid-session outages are possible. Ergast recovers history afterwards.
-- Pace correction is a linear approximation, not real telemetry.
-- The "live" dashboard page is delayed ~2 minutes by polling cadence + Looker refresh.
-- Off-season: a replay job re-plays a past Grand Prix to keep the live page populated for demos.
+- 2026 data is sparse (4 rounds in by mid-May). The dashboard refreshes daily and will populate as the season runs.
+- Pace correction (planned for Tier 3) is a linear fuel-burn approximation, not real telemetry.
+- "Live" page (planned for Tier 3) would lag ~2 minutes behind reality due to 1-min polling cadence + Looker Studio refresh.
+- OpenF1 is a community-run API — once integrated, mid-session outages are possible; Ergast recovers history afterwards.
 
-## Out of scope (deliberate)
+## Out of scope (deliberate trade-offs)
 
-- Pub/Sub or Dataflow streaming — not needed for the rubric, not justifiable on cost.
-- Composer/Airflow — Cloud Scheduler is sufficient.
-- Terraform — gcloud scripts are enough for a course project.
+- **Pub/Sub or Dataflow streaming** — overkill for this rubric and not justifiable on cost. The hybrid batch + micro-batch design covers the requirement.
+- **Composer / Airflow** — Cloud Scheduler is sufficient for two daily jobs. Composer's $300+/month base cost is not.
+- **Terraform** — gcloud scripts are reproducible enough for a course project. Real prod would use Terraform + workload identity federation for CI.
+- **Full `dbt build` in CI** — would need a CI service account + workload identity federation. Currently CI runs `dbt parse` (static validation only); full integration tests are noted as future work.
+
+## Repo layout
+
+```
+extractors/ergast/         # daily batch extractor (Cloud Run Function)
+loaders/gcs_to_bq/         # GCS finalize → BigQuery loader (Cloud Run Function)
+   schemas/                # explicit BQ schemas per (source, endpoint)
+dbt/                       # staging views + marts tables + tests
+   models/staging/ergast/
+   models/marts/
+   macros/                 # generate_schema_name override
+dbt_runner/                # Dockerfile + entrypoint for the daily Cloud Run Job
+deploy/                    # idempotent gcloud deploy scripts
+infra/                     # alert policies (Tier 2)
+.github/workflows/         # CI (ruff + dbt parse)
+```
+
+Each Python component has its own `README.md` documenting env vars, local-run command, and deploy invocation.
 
 ## License
 
-MIT (or whatever the course requires; update before submission).
+MIT.
