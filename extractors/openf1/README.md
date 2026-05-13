@@ -8,18 +8,20 @@
 |--------------|----------|----------------------------------|---------------------------------------------|
 | `GCS_BUCKET` | yes      | —                                | Lake bucket (e.g. `image-lab-f1-lake`).     |
 | `BASE_URL`   | no       | `https://api.openf1.org/v1`      | Override only for testing.                  |
+| `ENDPOINTS`  | no       | `laps,stints`                    | Comma-separated OpenF1 endpoints to fetch per session. |
 
 Query params:
-- (none) — **default mode**: polls `/sessions`, self-gates on whether any are active, writes new laps since the high-water-mark.
-- `?session_key=12345` — **backfill mode**: forces a fetch for that one session, ignoring HWM and the active-session gate. Used for smoke tests and historical loads.
+- (none) — **default mode**: polls `/sessions`, self-gates on whether any are active, fetches every configured endpoint for each active session.
+- `?session_key=12345` — **backfill mode**: forces a fetch for that one session, ignoring the active-session gate. Used for smoke tests and historical loads.
+- `?endpoints=stints` — restrict to a subset of endpoints (combine with `session_key` for a targeted backfill).
 
 ## GCS path
 
 ```
-gs://<bucket>/raw/source=openf1/endpoint=laps/session=<session_key>/<UTC ts>.ndjson
+gs://<bucket>/raw/source=openf1/endpoint=<endpoint>/session=<session_key>/<UTC ts>.ndjson
 ```
 
-One record per line; each line is one lap from the OpenF1 `/laps` response.
+One record per line; each line is one row from the OpenF1 endpoint response.
 
 ## Stateless design (no HWM)
 

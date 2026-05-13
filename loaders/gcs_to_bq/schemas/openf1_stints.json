@@ -1,0 +1,42 @@
+[
+  {
+    "mode": "NULLABLE",
+    "name": "tyre_age_at_start",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "compound",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "lap_start",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "driver_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "stint_number",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "session_key",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "lap_end",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "meeting_key",
+    "type": "INTEGER"
+  }
+]
