@@ -23,6 +23,10 @@ credentials.json
 # But keep loader schemas (they're checked in)
 !loaders/gcs_to_bq/schemas/*.json
 
+# Tooling caches
+.ruff_cache/
+**/.user.yml
+
 # OS / editor
 .DS_Store
 .idea/

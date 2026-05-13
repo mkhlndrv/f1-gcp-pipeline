@@ -1,0 +1,11 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["dbt/target", "dbt/dbt_packages", ".venv"]
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = pyflakes, I = isort, B = flake8-bugbear, UP = pyupgrade
+select = ["E", "W", "F", "I", "B", "UP"]
+# B008: function call in argument default — we use it for bigquery.Client() module-level singletons
+# E501: line too long — line-length above is the source of truth, but let occasional long log strings pass
+ignore = ["B008", "E501"]

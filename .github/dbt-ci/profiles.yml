@@ -1,0 +1,15 @@
+# CI-only dbt profile — used by `dbt parse` for static validation.
+# Never connects to BigQuery; the file just has to load without errors.
+
+f1:
+  target: ci
+  outputs:
+    ci:
+      type: bigquery
+      method: oauth
+      project: image-lab-494712
+      dataset: f1_marts
+      location: US
+      threads: 1
+      timeout_seconds: 60
+      priority: interactive
