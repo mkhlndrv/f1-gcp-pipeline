@@ -6,6 +6,7 @@ End-to-end Google Cloud Platform data-engineering project: ingests Formula 1 rac
 **Live dashboard:** [F1 2026 — Season Overview](https://datastudio.google.com/reporting/5ac17e24-8f05-4390-b862-4f952353a76d) (Looker Studio, public-view)
 - **Page 1** — season standings, championship table, points-over-rounds line chart (powered by `vw_dashboard_overview`).
 - **Page 2** — race deep-dive: lap-time over the race, pace ranking, per-driver stats, parameterised by race selector (powered by `vw_dashboard_race`).
+- **Page 3 (optional)** — live race state: current driver, compound, tire age, last-5-lap average; auto-tracks the freshest session in the data (powered by `vw_dashboard_live`). Refreshes daily; near-live (~2 min lag) during real session windows.
 
 ![F1 Race deep-dive page](docs/dashboard_race.png)
 
@@ -127,6 +128,7 @@ Tier 2 and Tier 3 work is documented in `PLAN.md` and `CLAUDE.md`; the pipeline 
 - **Composer / Airflow** — Cloud Scheduler is sufficient for two daily jobs. Composer's $300+/month base cost is not.
 - **Terraform** — gcloud scripts are reproducible enough for a course project. Real prod would use Terraform + workload identity federation for CI.
 - **Full `dbt build` in CI** — would need a CI service account + workload identity federation. Currently CI runs `dbt parse` (static validation only); full integration tests are noted as future work.
+- **Off-season replay Cloud Run Job** — would re-publish a stored historical race on a 1-min wall-clock cadence into a `_replay` dataset so the live page always has fresh-feeling data during demos. Deferred (Phase 14.b future work). The `vw_dashboard_live` view auto-picks the latest stored session, which delivers the same end-user value with zero new infrastructure.
 
 ## Repo layout
 

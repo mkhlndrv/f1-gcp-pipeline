@@ -23,7 +23,7 @@ End-to-end F1 race-weekend analytics pipeline on GCP.
 |---|---|---|---|
 | **Tier 1 — must-ship (rubric-complete)** | 0–8 | ✅ shipped | Ergast extractor, GCS→BQ loader, dbt warehouse + dashboard view, dbt-runner Cloud Run Job, daily schedules, Looker Studio dashboard, CI |
 | **Tier 2 — strong submission** | 9–12 (✅ shipped) | ✅ complete | Phase 9 = OpenF1 poller; Phase 10 = `fct_lap` + `fct_driver_pace`; Phase 11 = Cloud Monitoring alert; Phase 12 = race deep-dive dashboard page + `vw_dashboard_race`. dbt source freshness deferred (needs `_loaded_at` column on raw tables — see README). |
-| **Tier 3 — polish** | 13 (✅ shipped), 14 (pending) | 🟡 in progress | Phase 13 = `fct_clean_air_pace` (per-compound, fuel-corrected, defensible heuristic). Pending: Phase 14 (live race page + off-season replay). |
+| **Tier 3 — polish** | 13–14 (✅ shipped) | ✅ complete | Phase 13 = `fct_clean_air_pace` (per-compound, fuel-corrected, defensible heuristic); Phase 14 = `vw_dashboard_live` (auto-picks the latest session for near-live race state). Off-season replay Cloud Run Job deferred to Phase 14.b future work. |
 
 PLAN.md has the per-phase build plan; git history has the implementation order; this file is the conventions contract.
 
@@ -45,7 +45,8 @@ f1-pipeline/
 │   │   └── openf1/       # stg_openf1__laps; deduped at staging via QUALIFY
 │   ├── models/marts/     # dim_driver, dim_race, fct_driver_race_summary, vw_dashboard_overview,
 │   │                     # fct_lap, fct_driver_pace, vw_dashboard_race,
-│   │                     # fct_clean_air_pace, vw_dashboard_pace_by_compound
+│   │                     # fct_clean_air_pace, vw_dashboard_pace_by_compound,
+│   │                     # vw_dashboard_live
 │   └── macros/
 │       ├── generate_schema_name.sql  # so +schema: marts → literal `f1_marts`
 │       └── driver_label.sql          # driver_number → 3-letter code; session_key → race name
@@ -141,6 +142,7 @@ Always NDJSON (newline-delimited JSON). One record per line. UTF-8.
 - **`fct_clean_air_pace` uses an outlier-filter proxy for safety-car / in-lap detection** instead of joining `/race_control` and `/intervals`. The threshold is `lap_time > 1.25 × session_median_for_that_lap`. Honest simplification documented in the model description; Phase 13.b would add the explicit endpoint joins for stricter clean-air filtering.
 - **OpenF1 multi-endpoint extractor** loops over `ENDPOINTS` env var (default `laps,stints`). Each new endpoint may need its own `_sanitize` clause in `extractors/openf1/main.py` if BQ rejects any field shape (laps drops `segments_sector_*`; stints needs nothing). Add to `_DROP_FIELDS` dict.
 - **BQ load rate limit on a brand-new table.** When backfilling 5+ files into a never-loaded table within seconds, BQ may 429 on a few — they land in `raw_quarantine/`. Re-firing them once the table exists works. Spread sleeps if the pattern repeats.
+- **`vw_dashboard_live` auto-picks the latest session** via `SELECT session_key FROM fct_lap GROUP BY 1 ORDER BY MAX(lap_started_at) DESC LIMIT 1`. This is our stand-in for the off-season replay Cloud Run Job that PLAN.md mentions (deferred to Phase 14.b future work). The view shows the most recent stored session, which is genuinely live during a race weekend (~2 min lag) and "the last race that happened" off-season. The `is_live_proxy` boolean column distinguishes the two states for the dashboard.
 
 ---
 

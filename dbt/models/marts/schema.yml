@@ -127,3 +127,27 @@ models:
         tests: [not_null]
       - name: compound
         tests: [not_null]
+
+  - name: vw_dashboard_live
+    description: |
+      "Live" race state. Auto-picks the session with the most recent lap
+      timestamp from fct_lap, so during a real session window this is
+      near-live (within ~2 min of the OpenF1 poller cadence + Looker
+      refresh) and off-season it shows the most recently completed race.
+
+      One row per driver in the latest session. Includes current stint
+      compound, tire_age_laps (laps since current stint started),
+      last_5_laps_avg_ms, pace_ratio, and an is_live_proxy boolean
+      (true iff latest lap timestamp is within the last 2 hours of now).
+
+      The off-season replay job that PLAN.md mentions (re-publish a
+      historical race on a wall-clock cadence) is deferred to Phase 14.b
+      as future work. The auto-pick approach gives the same end-user
+      value with zero new infrastructure.
+    columns:
+      - name: session_key
+        tests: [not_null]
+      - name: driver_number
+        tests: [not_null]
+      - name: latest_lap_number
+        tests: [not_null]
