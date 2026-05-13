@@ -90,23 +90,36 @@ echo "==> Granting bucket-level roles"
 gsutil iam ch "serviceAccount:${EXT_SA}:objectCreator" "gs://$BUCKET"
 gsutil iam ch "serviceAccount:${LDR_SA}:objectAdmin"   "gs://$BUCKET"
 
-echo "==> Granting BigQuery dataset roles"
-# Loader: write to f1_raw
-bq add-iam-policy-binding --member="serviceAccount:${LDR_SA}" --role=roles/bigquery.dataEditor f1_raw >/dev/null
-# dbt: read raw, write staging+marts
-bq add-iam-policy-binding --member="serviceAccount:${DBT_SA}" --role=roles/bigquery.dataViewer f1_raw     >/dev/null
-bq add-iam-policy-binding --member="serviceAccount:${DBT_SA}" --role=roles/bigquery.dataEditor f1_staging >/dev/null
-bq add-iam-policy-binding --member="serviceAccount:${DBT_SA}" --role=roles/bigquery.dataEditor f1_marts   >/dev/null
+echo "==> Granting BigQuery dataset roles via 'bq update --source' (idempotent rewrite)"
+# Using the JSON form because `bq add-iam-policy-binding` is inconsistent across
+# bq versions and can silently no-op.
+_apply_dataset_iam() {
+  local ds="$1"; shift
+  local extra_access="$1"   # JSON fragment for project-specific access entries
+  bq update --source /dev/stdin "$ds" <<EOF
+{"access":[
+  {"role":"WRITER","specialGroup":"projectWriters"},
+  {"role":"OWNER","specialGroup":"projectOwners"},
+  {"role":"READER","specialGroup":"projectReaders"}
+  ${extra_access}
+]}
+EOF
+}
+
+_apply_dataset_iam f1_raw     ",{\"role\":\"WRITER\",\"userByEmail\":\"${LDR_SA}\"},{\"role\":\"READER\",\"userByEmail\":\"${DBT_SA}\"}"
+_apply_dataset_iam f1_staging ",{\"role\":\"WRITER\",\"userByEmail\":\"${DBT_SA}\"}"
+_apply_dataset_iam f1_marts   ",{\"role\":\"WRITER\",\"userByEmail\":\"${DBT_SA}\"}"
 
 echo "==> Granting project-level roles (job runner, eventarc, run invoker)"
-gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${LDR_SA}" --role=roles/bigquery.jobUser     --condition=None >/dev/null
-gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${DBT_SA}" --role=roles/bigquery.jobUser     --condition=None >/dev/null
-gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${LDR_SA}" --role=roles/eventarc.eventReceiver --condition=None >/dev/null
-gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${LDR_SA}" --role=roles/run.invoker            --condition=None >/dev/null
+# NOTE: --condition=None is NOT a real flag in all gcloud versions — omitting it.
+gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${LDR_SA}" --role=roles/bigquery.jobUser
+gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${DBT_SA}" --role=roles/bigquery.jobUser
+gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${LDR_SA}" --role=roles/eventarc.eventReceiver
+gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${LDR_SA}" --role=roles/run.invoker
 
 echo "==> Granting GCS service agent pubsub.publisher (required for Eventarc finalize triggers)"
 GCS_SA=$(gsutil kms serviceaccount -p "$PROJECT_ID")
-gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${GCS_SA}" --role=roles/pubsub.publisher --condition=None >/dev/null
+gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${GCS_SA}" --role=roles/pubsub.publisher
 
 # --- 0.8 Sanity check ------------------------------------------------------
 echo
