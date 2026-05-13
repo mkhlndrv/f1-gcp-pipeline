@@ -2,7 +2,7 @@
 
 End-to-end Google Cloud Platform data-engineering project: ingests Formula 1 race-weekend data from a free public API, lands it in a GCS data lake, loads it into BigQuery, models it with dbt, and serves an analytics dashboard in Looker Studio. Built as the final project for *Integrated Data Engineering and Analysis on Google Cloud Platform*.
 
-**Commit ID:** _filled at submission_
+**Commit ID:** `3274b26` (use `git rev-parse --short=7 HEAD` to get the very latest)
 **Live dashboard:** [F1 2026 — Season Overview](https://datastudio.google.com/reporting/5ac17e24-8f05-4390-b862-4f952353a76d) (Looker Studio, public-view)
 - **Page 1** — season standings, championship table, points-over-rounds line chart (powered by `vw_dashboard_overview`).
 - **Page 2** — race deep-dive: lap-time over the race, pace ranking, per-driver stats, parameterised by race selector (powered by `vw_dashboard_race`).
