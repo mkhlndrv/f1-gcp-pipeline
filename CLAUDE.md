@@ -22,7 +22,7 @@ End-to-end F1 race-weekend analytics pipeline on GCP.
 | Tier | Phases | Status | Notes |
 |---|---|---|---|
 | **Tier 1 — must-ship (rubric-complete)** | 0–8 | ✅ shipped | Ergast extractor, GCS→BQ loader, dbt warehouse + dashboard view, dbt-runner Cloud Run Job, daily schedules, Looker Studio dashboard, CI |
-| **Tier 2 — strong submission** | 9–11 (✅ shipped), 12 (pending) | 🟡 in progress | Phase 9 = OpenF1 poller; Phase 10 = `fct_lap` + `fct_driver_pace`; Phase 11 = Cloud Monitoring alert. Pending: race deep-dive page (12). dbt source freshness deferred (needs `_loaded_at` column on raw tables — see README). |
+| **Tier 2 — strong submission** | 9–12 (✅ shipped) | ✅ complete | Phase 9 = OpenF1 poller; Phase 10 = `fct_lap` + `fct_driver_pace`; Phase 11 = Cloud Monitoring alert; Phase 12 = race deep-dive dashboard page + `vw_dashboard_race`. dbt source freshness deferred (needs `_loaded_at` column on raw tables — see README). |
 | **Tier 3 — polish** | 13–14 | ⏸ stretch | Full clean-air pace heuristic, live race page, off-season replay job |
 
 PLAN.md has the per-phase build plan; git history has the implementation order; this file is the conventions contract.
@@ -43,7 +43,8 @@ f1-pipeline/
 │   ├── models/staging/
 │   │   ├── ergast/       # 5 views (results, qualifying, drivers, races, driver_standings)
 │   │   └── openf1/       # stg_openf1__laps; deduped at staging via QUALIFY
-│   ├── models/marts/     # dim_driver, dim_race, fct_driver_race_summary, vw_dashboard_overview, fct_lap, fct_driver_pace
+│   ├── models/marts/     # dim_driver, dim_race, fct_driver_race_summary, vw_dashboard_overview,
+│   │                     # fct_lap, fct_driver_pace, vw_dashboard_race
 │   └── macros/
 │       └── generate_schema_name.sql  # so +schema: marts → literal `f1_marts`
 ├── dbt_runner/           # container image + Dockerfile + cloudbuild.yaml for the daily Cloud Run Job
@@ -133,6 +134,7 @@ Always NDJSON (newline-delimited JSON). One record per line. UTF-8.
 - **Cloud Logging severity comes from a JSON `severity` key, not Python's `logging.error()`.** When emitting structured log lines via `log.error(json.dumps({...}))`, you MUST include `"severity": "ERROR"` in the dict — otherwise Cloud Logging shows the entry with no severity and log-based alerts won't fire. The loader's `_quarantine` helper does this; new ERROR paths must too.
 - **Alert policy `f1-cloud-run-errors`** uses a `service_name` regex matching `gcs-to-bq-loader|ergast-extractor|openf1-poller|dbt-runner`. If a new Cloud Run service is added, update `infra/alerts/function_errors.yaml` and re-run `bash deploy/deploy_alerts.sh`.
 - **`gcloud alpha monitoring`** isn't installed by default; the alert deploy script uses `gcloud beta monitoring` which is in the base install.
+- **`vw_dashboard_race` uses hardcoded driver/session label CASE-WHENs** for the 2026 grid. This is a deliberate Tier-2 shortcut. Tier 3 replacement: build `/drivers` and `/sessions` extractors → load into `f1_raw.openf1_drivers` / `openf1_sessions` → join in `dim_driver_xref` (also bridges OpenF1 ↔ Ergast). When that lands, replace the CASE-WHENs with proper joins and remove this gotcha entry.
 
 ---
 

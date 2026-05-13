@@ -81,3 +81,13 @@ models:
       - name: median_lap_ms
       - name: pace_ratio
         description: "1.000 = exactly field median; <1.000 = faster; >1.000 = slower."
+
+  - name: vw_dashboard_race
+    description: "Flat dashboard view for the race deep-dive page. One row per (session, driver, lap) with display labels, pace_ratio, lap_time_s, and an outlier flag. Hardcoded driver_label and session_label CASE-WHENs are a Tier-3 replacement target."
+    columns:
+      - name: session_key
+        tests: [not_null]
+      - name: driver_number
+        tests: [not_null]
+      - name: lap_number
+        tests: [not_null]
