@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: stg_openf1__laps
+    description: "Deduped, type-cast OpenF1 laps. One row per (session_key, driver_number, lap_number). Pit-out laps and incomplete laps excluded."
+    columns:
+      - name: session_key
+        tests: [not_null]
+      - name: driver_number
+        tests: [not_null]
+      - name: lap_number
+        tests: [not_null]
+      - name: lap_time_ms
+        description: "Lap duration in milliseconds (lap_duration × 1000)."
+        tests: [not_null]

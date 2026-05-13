@@ -57,3 +57,27 @@ models:
         tests: [not_null]
       - name: cumulative_points
         description: "Running sum of season points up to and including this round."
+
+  - name: fct_lap
+    description: "OpenF1 lap-grain fact. One row per (session_key, driver_number, lap_number)."
+    columns:
+      - name: session_key
+        tests: [not_null]
+      - name: driver_number
+        tests: [not_null]
+      - name: lap_number
+        tests: [not_null]
+      - name: lap_time_ms
+        tests: [not_null]
+
+  - name: fct_driver_pace
+    description: "Per-session, per-driver pace summary. pace_ratio = driver-median of (lap_time / field-median-for-that-lap-number); 1.000 = field median."
+    columns:
+      - name: session_key
+        tests: [not_null]
+      - name: driver_number
+        tests: [not_null]
+      - name: laps
+      - name: median_lap_ms
+      - name: pace_ratio
+        description: "1.000 = exactly field median; <1.000 = faster; >1.000 = slower."

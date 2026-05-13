@@ -22,7 +22,7 @@ End-to-end F1 race-weekend analytics pipeline on GCP.
 | Tier | Phases | Status | Notes |
 |---|---|---|---|
 | **Tier 1 — must-ship (rubric-complete)** | 0–8 | ✅ shipped | Ergast extractor, GCS→BQ loader, dbt warehouse + dashboard view, dbt-runner Cloud Run Job, daily schedules, Looker Studio dashboard, CI |
-| **Tier 2 — strong submission** | 9 (✅ shipped), 10–12 (pending) | 🟡 in progress | Phase 9 = OpenF1 poller. Pending: `fct_lap` + simple pace metric (10), monitoring + dbt source freshness (11), race deep-dive page (12) |
+| **Tier 2 — strong submission** | 9–10 (✅ shipped), 11–12 (pending) | 🟡 in progress | Phase 9 = OpenF1 poller; Phase 10 = `fct_lap` + `fct_driver_pace`. Pending: monitoring + dbt source freshness (11), race deep-dive page (12) |
 | **Tier 3 — polish** | 13–14 | ⏸ stretch | Full clean-air pace heuristic, live race page, off-season replay job |
 
 PLAN.md has the per-phase build plan; git history has the implementation order; this file is the conventions contract.
@@ -40,8 +40,10 @@ f1-pipeline/
 │   └── gcs_to_bq/        # GCS finalize → BigQuery load (Eventarc-triggered)
 │       └── schemas/      # explicit JSON schemas per (source, endpoint), snapshotted post-first-load
 ├── dbt/
-│   ├── models/staging/   # views; one per source endpoint
-│   ├── models/marts/     # tables (dim_* + fct_*) + vw_dashboard_overview view
+│   ├── models/staging/
+│   │   ├── ergast/       # 5 views (results, qualifying, drivers, races, driver_standings)
+│   │   └── openf1/       # stg_openf1__laps; deduped at staging via QUALIFY
+│   ├── models/marts/     # dim_driver, dim_race, fct_driver_race_summary, vw_dashboard_overview, fct_lap, fct_driver_pace
 │   └── macros/
 │       └── generate_schema_name.sql  # so +schema: marts → literal `f1_marts`
 ├── dbt_runner/           # container image + Dockerfile + cloudbuild.yaml for the daily Cloud Run Job
@@ -99,7 +101,7 @@ Always NDJSON (newline-delimited JSON). One record per line. UTF-8.
 ### BigQuery
 - `f1_raw.*` — append-only, **unpartitioned + unclustered** (autodetect on first load; explicit JSON schema in `loaders/gcs_to_bq/schemas/<source>_<endpoint>.json` thereafter). Partitioning + clustering is a Tier 3+ refinement; current data volume doesn't justify it.
 - `f1_staging.*` — views only.
-- `f1_marts.*` — Tier 1: `materialized='table'` (small dims + small facts). Reserve `materialized='incremental'` for `fct_lap` (Phase 10) where lap-grain volume actually justifies it.
+- `f1_marts.*` — All Tier 1 + Tier 2 marts use `materialized='table'`. Volume (~24K rows/year for `fct_lap`) doesn't justify incremental complexity. Revisit if `fct_lap` ever pulls stints/weather/etc. and the row count balloons.
 - Schema autodetect on initial load is fine; once a schema file is committed under `loaders/gcs_to_bq/schemas/`, the loader uses it (not autodetect).
 - `ignore_unknown_values=True` on every load — schema drift never breaks the loader; new fields appear in BQ only when their schema file is updated (intentional, explicit).
 

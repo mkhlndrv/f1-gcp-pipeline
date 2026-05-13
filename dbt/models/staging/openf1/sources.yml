@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: openf1
+    description: "Live-telemetry data from OpenF1, micro-batched by the openf1-poller (Phase 9)."
+    database: image-lab-494712
+    schema: f1_raw
+    tables:
+      - name: openf1_laps
+        description: "One row per (session_key, driver_number, lap_number). Same lap appears in many rows because the poller is stateless; staging dedupes."
