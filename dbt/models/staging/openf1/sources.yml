@@ -8,3 +8,5 @@ sources:
     tables:
       - name: openf1_laps
         description: "One row per (session_key, driver_number, lap_number). Same lap appears in many rows because the poller is stateless; staging dedupes."
+      - name: openf1_stints
+        description: "One row per (session_key, driver_number, stint_number). Tire compound + lap_start/lap_end boundaries."

@@ -13,3 +13,15 @@ models:
       - name: lap_time_ms
         description: "Lap duration in milliseconds (lap_duration × 1000)."
         tests: [not_null]
+
+  - name: stg_openf1__stints
+    description: "One row per (session_key, driver_number, stint_number) with tire compound + stint boundaries."
+    columns:
+      - name: session_key
+        tests: [not_null]
+      - name: driver_number
+        tests: [not_null]
+      - name: stint_number
+        tests: [not_null]
+      - name: compound
+        tests: [not_null]

@@ -83,11 +83,47 @@ models:
         description: "1.000 = exactly field median; <1.000 = faster; >1.000 = slower."
 
   - name: vw_dashboard_race
-    description: "Flat dashboard view for the race deep-dive page. One row per (session, driver, lap) with display labels, pace_ratio, lap_time_s, and an outlier flag. Hardcoded driver_label and session_label CASE-WHENs are a Tier-3 replacement target."
+    description: "Flat dashboard view for the race deep-dive page. One row per (session, driver, lap) with display labels, pace_ratio, lap_time_s, and an outlier flag. Labels come from the driver_label / session_label macros (Tier-3 replacement target = real /drivers extractor + xref dim)."
     columns:
       - name: session_key
         tests: [not_null]
       - name: driver_number
         tests: [not_null]
       - name: lap_number
+        tests: [not_null]
+
+  - name: fct_clean_air_pace
+    description: |
+      Tier-3 headline metric: per (session, driver, compound) median lap time
+      restricted to "clean-air" laps and corrected for fuel load.
+
+      Clean-air definition (a deliberate Tier-3 simplification — see model SQL):
+        * the lap maps to a stint with a known compound
+        * lap > stint.lap_start (excludes out-laps)
+        * lap_time <= 1.25 × session-median for that lap_number (defensible
+          proxy that catches both safety-car laps AND slow in-laps without
+          needing /race_control or pit-in detection)
+
+      Fuel correction: lap_time - 30ms × laps_remaining_in_session. Standard
+      literature approximation; not real telemetry.
+
+      pace_ratio = driver-median / field-median for that (session, compound).
+    columns:
+      - name: session_key
+        tests: [not_null]
+      - name: driver_number
+        tests: [not_null]
+      - name: compound
+        tests: [not_null]
+      - name: pace_ratio
+        description: "1.000 = field median for this (session, compound); <1.000 = faster."
+
+  - name: vw_dashboard_pace_by_compound
+    description: "Flat dashboard view for the optional pace-by-compound page. Wraps fct_clean_air_pace with driver_label and session_label."
+    columns:
+      - name: session_key
+        tests: [not_null]
+      - name: driver_number
+        tests: [not_null]
+      - name: compound
         tests: [not_null]

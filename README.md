@@ -43,7 +43,7 @@ The architecture is also designed to absorb a 1-minute micro-batch poller for li
 |---|---|---|---|
 | 1 | Ergast extractor | `extractors/ergast/main.py` | Cloud Run Function `ergast-extractor` |
 | 2 | GCS → BQ loader | `loaders/gcs_to_bq/main.py` | Cloud Run Function `gcs-to-bq-loader` (Eventarc finalize trigger) |
-| 3 | dbt models | `dbt/models/{staging,marts}/` | BigQuery datasets `f1_staging`, `f1_marts` |
+| 3 | dbt models | `dbt/models/{staging,marts}/` | BigQuery datasets `f1_staging`, `f1_marts` (incl. `fct_clean_air_pace` per-compound) |
 | 4 | dbt runner | `dbt_runner/Dockerfile` | Cloud Run Job `dbt-runner` |
 | 5 | Daily schedules | `deploy/create_schedulers.sh` | `ergast-daily` 06:00, `dbt-daily` 06:30 (Madrid) |
 | 6 | Dashboard | Looker Studio | One page, four chart blocks |

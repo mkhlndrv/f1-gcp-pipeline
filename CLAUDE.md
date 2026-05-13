@@ -23,7 +23,7 @@ End-to-end F1 race-weekend analytics pipeline on GCP.
 |---|---|---|---|
 | **Tier 1 — must-ship (rubric-complete)** | 0–8 | ✅ shipped | Ergast extractor, GCS→BQ loader, dbt warehouse + dashboard view, dbt-runner Cloud Run Job, daily schedules, Looker Studio dashboard, CI |
 | **Tier 2 — strong submission** | 9–12 (✅ shipped) | ✅ complete | Phase 9 = OpenF1 poller; Phase 10 = `fct_lap` + `fct_driver_pace`; Phase 11 = Cloud Monitoring alert; Phase 12 = race deep-dive dashboard page + `vw_dashboard_race`. dbt source freshness deferred (needs `_loaded_at` column on raw tables — see README). |
-| **Tier 3 — polish** | 13–14 | ⏸ stretch | Full clean-air pace heuristic, live race page, off-season replay job |
+| **Tier 3 — polish** | 13 (✅ shipped), 14 (pending) | 🟡 in progress | Phase 13 = `fct_clean_air_pace` (per-compound, fuel-corrected, defensible heuristic). Pending: Phase 14 (live race page + off-season replay). |
 
 PLAN.md has the per-phase build plan; git history has the implementation order; this file is the conventions contract.
 
@@ -44,9 +44,11 @@ f1-pipeline/
 │   │   ├── ergast/       # 5 views (results, qualifying, drivers, races, driver_standings)
 │   │   └── openf1/       # stg_openf1__laps; deduped at staging via QUALIFY
 │   ├── models/marts/     # dim_driver, dim_race, fct_driver_race_summary, vw_dashboard_overview,
-│   │                     # fct_lap, fct_driver_pace, vw_dashboard_race
+│   │                     # fct_lap, fct_driver_pace, vw_dashboard_race,
+│   │                     # fct_clean_air_pace, vw_dashboard_pace_by_compound
 │   └── macros/
-│       └── generate_schema_name.sql  # so +schema: marts → literal `f1_marts`
+│       ├── generate_schema_name.sql  # so +schema: marts → literal `f1_marts`
+│       └── driver_label.sql          # driver_number → 3-letter code; session_key → race name
 ├── dbt_runner/           # container image + Dockerfile + cloudbuild.yaml for the daily Cloud Run Job
 ├── infra/alerts/         # Cloud Monitoring alert policies (function_errors.yaml)
 ├── deploy/               # idempotent gcloud deploy scripts for each component
@@ -112,6 +114,7 @@ Always NDJSON (newline-delimited JSON). One record per line. UTF-8.
 - Every model has an entry in the relevant `schema.yml` with at least: description, columns, and `unique`+`not_null` tests on natural keys. Relationship tests use the dbt 1.10+ `arguments:` nesting.
 - Use `{{ ref(...) }}` for models; `{{ source(...) }}` for raw tables. Never reference `f1_raw.*` by literal name.
 - The custom `generate_schema_name` macro means `+schema: marts` writes to literal `f1_marts` (not `<target>_marts`). Don't override unless you understand it.
+- The `driver_label` and `session_label` macros (`dbt/macros/driver_label.sql`) are the project's canonical OpenF1 label maps. Use them in any new dashboard view — don't re-paste CASE-WHENs.
 - Macros go in `dbt/macros/`. Don't introduce a new macro for something used in only one model.
 - `dbt-bigquery==1.11.*`, locked in `dbt_runner/Dockerfile` and the example profile.
 
@@ -134,7 +137,10 @@ Always NDJSON (newline-delimited JSON). One record per line. UTF-8.
 - **Cloud Logging severity comes from a JSON `severity` key, not Python's `logging.error()`.** When emitting structured log lines via `log.error(json.dumps({...}))`, you MUST include `"severity": "ERROR"` in the dict — otherwise Cloud Logging shows the entry with no severity and log-based alerts won't fire. The loader's `_quarantine` helper does this; new ERROR paths must too.
 - **Alert policy `f1-cloud-run-errors`** uses a `service_name` regex matching `gcs-to-bq-loader|ergast-extractor|openf1-poller|dbt-runner`. If a new Cloud Run service is added, update `infra/alerts/function_errors.yaml` and re-run `bash deploy/deploy_alerts.sh`.
 - **`gcloud alpha monitoring`** isn't installed by default; the alert deploy script uses `gcloud beta monitoring` which is in the base install.
-- **`vw_dashboard_race` uses hardcoded driver/session label CASE-WHENs** for the 2026 grid. This is a deliberate Tier-2 shortcut. Tier 3 replacement: build `/drivers` and `/sessions` extractors → load into `f1_raw.openf1_drivers` / `openf1_sessions` → join in `dim_driver_xref` (also bridges OpenF1 ↔ Ergast). When that lands, replace the CASE-WHENs with proper joins and remove this gotcha entry.
+- **Driver/session labels live in `dbt/macros/driver_label.sql`** as hardcoded CASE-WHENs for the 2026 grid + currently-loaded session_keys. Used by `vw_dashboard_race` and `vw_dashboard_pace_by_compound`. Tier-3 replacement target: build `/drivers` and `/sessions` extractors → load into `f1_raw.openf1_drivers` / `openf1_sessions` → join in `dim_driver_xref` (also bridges OpenF1 ↔ Ergast). When that lands, replace the macros with proper joins and remove this gotcha entry.
+- **`fct_clean_air_pace` uses an outlier-filter proxy for safety-car / in-lap detection** instead of joining `/race_control` and `/intervals`. The threshold is `lap_time > 1.25 × session_median_for_that_lap`. Honest simplification documented in the model description; Phase 13.b would add the explicit endpoint joins for stricter clean-air filtering.
+- **OpenF1 multi-endpoint extractor** loops over `ENDPOINTS` env var (default `laps,stints`). Each new endpoint may need its own `_sanitize` clause in `extractors/openf1/main.py` if BQ rejects any field shape (laps drops `segments_sector_*`; stints needs nothing). Add to `_DROP_FIELDS` dict.
+- **BQ load rate limit on a brand-new table.** When backfilling 5+ files into a never-loaded table within seconds, BQ may 429 on a few — they land in `raw_quarantine/`. Re-firing them once the table exists works. Spread sleeps if the pattern repeats.
 
 ---
 
