@@ -45,6 +45,21 @@ The pipeline is hybrid by design. Ergast is the canonical source for F1 results 
 
 ---
 
+## How the pipeline runs (step by step)
+
+1. **06:00 Madrid** — Cloud Scheduler fires `ergast-daily`, sending an OIDC-authenticated GET to the Ergast extractor.
+2. **Ergast extractor** wakes up, paginates through 5 endpoints (results, qualifying, drivers, standings, seasons), writes one NDJSON file per page to `gs://image-lab-f1-lake/raw/source=ergast/endpoint=<ep>/dt=<YYYY-MM-DD>/...`.
+3. **GCS publishes a finalize event** for each new file. **Eventarc** routes the event to the loader function.
+4. **Loader** regex-parses the path, looks up the committed JSON schema for that (source, endpoint), and appends the rows into `f1_raw.<source>_<endpoint>` with `WRITE_APPEND`. Bad files get moved to `raw_quarantine/` and a structured ERROR log is emitted (which the monitoring alert picks up).
+5. **Every minute UTC** — Cloud Scheduler fires `openf1-1min`. The poller calls OpenF1's `/sessions` endpoint to check whether any F1 session is currently active. If none, it returns 204 immediately and costs almost nothing. If one is active, it fetches `/laps` and `/stints` for that session, drops fields that BigQuery rejects, and writes one NDJSON file per (session, endpoint). The same loader path picks them up.
+6. **06:30 Madrid** — Cloud Scheduler fires `dbt-daily`, calling the Cloud Run Jobs admin API (OAuth, not OIDC) to start the dbt-runner container.
+7. **dbt-runner** runs `dbt build` inside a Python 3.12 + dbt-bigquery 1.11 container. dbt parses the project, builds the dependency DAG, rebuilds the 7 staging views (deduplicating and type-casting raw), then rebuilds the 10 marts (`dim_*`, `fct_*`, `vw_dashboard_*`) in dependency order across 8 threads.
+8. **dbt tests** run after each model — 24 tests covering uniqueness, not-null, and foreign-key relationships. A failed test exits the job non-zero, which the monitoring alert catches.
+9. **Looker Studio** queries the marts on demand. The three dashboard pages each read from one `vw_dashboard_*` view.
+10. **Cloud Monitoring** continuously watches all four pipeline services for structured ERROR logs and emails me within ~2 minutes on any failure (rate-limited to one per 5 minutes).
+
+---
+
 ## What's in the repo
 
 | Component | Code | GCP resource |
