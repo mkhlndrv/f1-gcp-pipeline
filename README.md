@@ -165,15 +165,3 @@ docs/                      # dashboard screenshots + the deep-dive explanation
 ```
 
 Each Python component has its own `README.md` documenting env vars, local-run command, and deploy invocation. The `docs/PROJECT_DEEP_DIVE.md` is the long-form, beginner-friendly walkthrough I wrote for myself before the presentation.
-
----
-
-## What I learned
-
-The hard parts weren't the code — they were the contracts between services. Cloud Logging only tags severity if the JSON payload contains a literal `"severity": "ERROR"` key, not when Python's `logging.error()` runs; I burned an hour on a silent alert before figuring that out. Cloud Scheduler authenticates differently depending on what it's calling — OIDC for Cloud Run service URLs, OAuth for the Cloud Run Jobs admin API — and confusing the two gives confusingly-shaped 401s. OpenF1's `/laps` endpoint returns `segments_sector_*` as REPEATED INTEGER arrays with NULL elements, which BigQuery refuses to load until you drop the field in the extractor. Most of my time after the first deploy went into writing those gotchas down so the next one (or the next person) doesn't re-trip them.
-
----
-
-## License
-
-MIT.
