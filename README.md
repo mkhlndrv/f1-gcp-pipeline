@@ -135,32 +135,6 @@ The policy is reapplyable via `bash deploy/deploy_alerts.sh` (idempotent: update
 
 ---
 
-## Cost
-
-Under $0.50/month at current scheduling. BigQuery on-demand pricing stays well inside the 1 TB/month free query quota; Cloud Run, Cloud Scheduler, and GCS at this volume are pennies. The dbt-runner container runs once a day for ~30 seconds, so its compute cost is negligible.
-
----
-
-## Limitations and trade-offs
-
-A few things I deliberately didn't build, with the reasoning:
-
-- **Driver labels are hardcoded in a dbt macro** (`dbt/macros/driver_label.sql`) instead of joined from a real `dim_driver_xref`. The proper fix would be to add `/drivers` and `/sessions` extractors to OpenF1 and build a cross-reference dim that bridges OpenF1 driver numbers to Ergast driver IDs. The macro is honest about this in a comment.
-- **The clean-air pace metric (`fct_clean_air_pace`) uses an outlier filter as a proxy for excluding safety-car and in/out laps**, instead of joining OpenF1's `/race_control` and `/intervals` endpoints. The filter (`lap_time > 1.25 × session-median for that lap_number`) catches both cases without two extra extractors and a schema-snapshot cycle. The model description documents this honestly so a sharp reviewer can read what I'm claiming.
-- **dbt source freshness is deferred.** Adding it requires a per-row `_loaded_at` column on every raw table, which means a small loader change and re-snapshotting all the raw schemas. I traded that for shipping the rest of the pipeline on time.
-- **The "live" page lags ~2 minutes behind reality** during a session, due to OpenF1's publish lag + the 1-min poller cadence + Looker Studio's refresh. Documented on the page itself.
-- **No off-season replay job.** The original plan was a Cloud Run Job that re-publishes a stored historical race on a wall-clock cadence so the live page always has something to show during demos. Instead, `vw_dashboard_live` auto-picks the latest stored session — same end-user value, zero new infrastructure.
-- **OpenF1 is community-run** so mid-session outages are possible; Ergast recovers canonical history afterward.
-
-A few things I deliberately *didn't* use:
-
-- **Pub/Sub or Dataflow streaming** — both data sources are pull-based REST APIs, so streaming infrastructure would just be polling-then-republishing with extra moving parts. Hybrid batch + micro-batch is the honest fit.
-- **Composer / Airflow** — Cloud Scheduler is sufficient for two daily jobs and a 1-minute poller. Composer's $300+/month base cost can't be justified.
-- **Terraform** — gcloud deploy scripts under `deploy/` are reproducible enough for a course project; real prod would use Terraform + workload identity federation for CI.
-- **Full `dbt build` in CI** — would need a CI service account and workload identity federation. CI today runs `dbt parse` (static SQL validation), which catches typos and broken refs without needing BigQuery credentials.
-
----
-
 ## Repo layout
 
 ```
